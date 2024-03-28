@@ -3,31 +3,53 @@ select
 	base.months,
 	base.topology_uid,
 	base.topology_name,
-	isnull(mau.users,0) as mau,
-	isnull(mau.dialed_calls_mo,0) as mau_dialed_calls_mo,
-	isnull(mau.connected_calls_mo,0) as mau_connected_calls_mo,
-	isnull(junk.junk_leads,0) as junk_leads,
-	isnull(fa_ra.lead_assigned,0) lead_assigned,
-	isnull(fa_ra.lead_contact_d30,0) lead_contact_d30,
-	isnull(contact_sql.leads_exc_junk,0) leads_exc_junk,
-	isnull(contact_sql.sql_exc_junk,0) sql_exc_junk,
-	isnull(contact_sql.paid_exc_junk,0) paid_exc_junk,
-	isnull(contact_sql.interested_lead,0) interested_lead,
-	isnull(contact_sql.interested_sql_lead,0) interested_sql_lead,
-	isnull(contact_sql.interested_paid_lead,0) interested_paid_lead,
-	isnull(hot_warm.warm_leads,0) warm_leads,
-	isnull(arpu.revenue,0) revenue,
-	isnull(arpu.payments,0) payments,
-	isnull(arpu.leads_contacted,0) leads_contacted,
-	isnull(arpu.leads_exc_junk,0) leads_exc_junk,
-	isnull(arpu.bde_count,0) bde_count,
-	isnull(bde.num_bdes,0) num_bdes
+	base.business_category_name,
+	isnull(mau.users,
+	0) as mau,
+	isnull(mau.dialed_calls_mo,
+	0) as mau_dialed_calls_mo,
+	isnull(mau.connected_calls_mo,
+	0) as mau_connected_calls_mo,
+	isnull(junk.junk_leads,
+	0) as junk_leads,
+	isnull(fa_ra.lead_assigned,
+	0) lead_assigned,
+	isnull(fa_ra.lead_contact_d30,
+	0) lead_contact_d30,
+	isnull(contact_sql.leads_exc_junk,
+	0) leads_exc_junk,
+	isnull(contact_sql.sql_exc_junk,
+	0) sql_exc_junk,
+	isnull(contact_sql.paid_exc_junk,
+	0) paid_exc_junk,
+	isnull(contact_sql.interested_lead,
+	0) interested_lead,
+	isnull(contact_sql.interested_sql_lead,
+	0) interested_sql_lead,
+	isnull(contact_sql.interested_paid_lead,
+	0) interested_paid_lead,
+	isnull(hot_warm.warm_leads,
+	0) warm_leads,
+	isnull(arpu.revenue,
+	0) revenue,
+	isnull(arpu.payments,
+	0) payments,
+	isnull(arpu.leads_contacted,
+	0) leads_contacted,
+	isnull(arpu.leads_exc_junk,
+	0) leads_exc_junk,
+	isnull(arpu.bde_count,
+	0) bde_count,
+	isnull(bde.num_bdes,
+	0) num_bdes
 from
 	(
 	select 
 		topology.name as topology_name,
 		topology.uid as topology_uid,
-		date_trunc('month',dates.dates) as months
+		sub.business_category_name,
+		date_trunc('month',
+		dates.dates) as months
 	from
 		truth.tbl_revenue_base sub
 		--as sub--removed 7
@@ -43,12 +65,15 @@ from
 	group by 
 		1,
 		2,
-		3
-		union 	 
+		3,
+		4
+union
 	select 
 		'Overall' as topology_name,
 		'Overall' as topology_uid,
-		date_trunc('month',dates.dates) as months
+		'Overall' as business_category_name,
+		date_trunc('month',
+		dates.dates) as months
 	from
 		truth.tbl_revenue_base sub
 		--as sub--removed 7
@@ -64,347 +89,667 @@ from
 	group by 
 		1,
 		2,
-		3
+		3,
+		4
 		) base
 left join 
-		(SELECT 
-    DATE_TRUNC('month', a.dates) AS months,
-    tt.uid AS topology_uid,
-    SUM(a.users) AS users,
-    SUM(a.dialed_calls_mo) AS dialed_calls_mo,
-    SUM(a.connected_calls_mo) AS connected_calls_mo
-FROM 
-    sandbox_analytics.mau_conversion_table a
-LEFT JOIN 
-    topology_topology tt ON tt.id = a.goal_id 
-WHERE 
-    a.dates >= '2022-01-01'
-GROUP BY 
-    1, 2
-UNION
-SELECT 
-    DATE_TRUNC('month', a.dates) AS months,
-    'Overall' AS topology_uid,
-    SUM(a.users) AS users,
-    SUM(a.dialed_calls_mo) AS dialed_calls_mo,
-    SUM(a.connected_calls_mo) AS connected_calls_mo
-FROM 
-    sandbox_analytics.mau_conversion_table a
-WHERE 
-    a.dates >= '2022-01-01'
-GROUP BY 
-    1, 2
-ORDER BY 
-    1, 2) mau on mau.topology_uid = base.topology_uid and mau.months = base.months
+		(
+	select
+		DATE_TRUNC('month',
+		a.dates) as months,
+		tt.uid as topology_uid,
+		SUM(a.users) as users,
+		SUM(a.dialed_calls_mo) as dialed_calls_mo,
+		SUM(a.connected_calls_mo) as connected_calls_mo
+	from
+		sandbox_analytics.mau_conversion_table a
+	left join 
+    topology_topology tt on
+		tt.id = a.goal_id
+	where
+		a.dates >= '2022-01-01'
+	group by
+		1,
+		2
+union
+	select
+		DATE_TRUNC('month',
+		a.dates) as months,
+		'Overall' as topology_uid,
+		SUM(a.users) as users,
+		SUM(a.dialed_calls_mo) as dialed_calls_mo,
+		SUM(a.connected_calls_mo) as connected_calls_mo
+	from
+		sandbox_analytics.mau_conversion_table a
+	where
+		a.dates >= '2022-01-01'
+	group by
+		1,
+		2
+	order by
+		1,
+		2) mau on
+	mau.topology_uid = base.topology_uid
+	and mau.months = base.months
 left join 
 		(
-		SELECT 
-    DATE_TRUNC('month', tbdn.disposition_date) AS months,
-    tbln.current_goal_uid as topology_uid,
-    COUNT(DISTINCT tbdn.lead_id) AS junk_leads
-FROM 
-    sales.tbl_base_disposition_nimbus tbdn
-LEFT JOIN 
-    sales.tbl_base_leads_nimbus tbln ON tbln.lead_id = tbdn.lead_id
-WHERE 
-    LOWER(tbdn.lead_stage) IN ('junk')
-    AND tbdn.disposition_date >= '2022-01-01' 
-GROUP BY 
-    1, 2
-UNION
-SELECT 
-    DATE_TRUNC('month', tbdn.disposition_date) AS months,
-    'Overall' AS topology_uid,
-    COUNT(DISTINCT tbdn.lead_id) AS junk_leads
-FROM 
-    sales.tbl_base_disposition_nimbus tbdn
-LEFT JOIN 
-    sales.tbl_base_leads_nimbus tbln ON tbln.lead_id = tbdn.lead_id
-WHERE 
-    LOWER(tbdn.lead_stage) IN ('junk')
-    AND tbdn.disposition_date >= '2022-01-01' 
-GROUP BY 
-    1, 2) junk on junk.topology_uid = base.topology_uid and junk.months = base.months
-	left join (with base as 
-	(select *,
-	row_number () over (partition by lead_id ,date(date_trunc('month', assigned_date)) order by assigned_date ) as r
+	select
+		DATE_TRUNC('month',
+		tbdn.disposition_date) as months,
+		tbln.current_goal_uid as topology_uid,
+		COUNT(distinct tbdn.lead_id) as junk_leads
+	from
+		sales.tbl_base_disposition_nimbus tbdn
+	left join 
+    sales.tbl_base_leads_nimbus tbln on
+		tbln.lead_id = tbdn.lead_id
+	where
+		LOWER(tbdn.lead_stage) in ('junk')
+			and tbdn.disposition_date >= '2022-01-01'
+		group by
+			1,
+			2
+	union
+		select
+			DATE_TRUNC('month',
+			tbdn.disposition_date) as months,
+			'Overall' as topology_uid,
+			COUNT(distinct tbdn.lead_id) as junk_leads
+		from
+			sales.tbl_base_disposition_nimbus tbdn
+		left join 
+    sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbdn.lead_id
+		where
+			LOWER(tbdn.lead_stage) in ('junk')
+				and tbdn.disposition_date >= '2022-01-01'
+			group by
+				1,
+				2) junk on
+	junk.topology_uid = base.topology_uid
+	and junk.months = base.months
+left join (with base as 
+	(
+	select
+		*,
+		row_number () over (partition by lead_id ,
+		date(date_trunc('month',
+		assigned_date))
+	order by
+		assigned_date ) as r
 	from 
-		(-- ra leads
-		select tdrn.lead_id ,
-		tdrn.assigned_date ,
-		tdrn.min_call_date_aa ,
-		tdrn.min_connect_date_aa ,
-		tdrn.business_category_name ,
-		tbln.current_goal_uid,
-		row_number () over (partition by tdrn.lead_id ,date(date_trunc('month', tdrn.assigned_date)) order by tdrn.assigned_date ) as rk
-		from sales.tbl_db_reassignment_nimbus tdrn 
-		left join sales.tbl_base_leads_nimbus tbln on tdrn.lead_id = tbln.lead_id
-		where date(tdrn.assigned_date) >= '2022-01-01' 
-		and tdrn.reactivation_source_modified = 'Selected Platform Activities'
-		and lower(tdrn.business_unit) in (select * from sales.tbl_istsales_bu)
-		and lower(coalesce (tdrn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
+		(
+		-- ra leads
+		select
+			tdrn.lead_id ,
+			tdrn.assigned_date ,
+			tdrn.min_call_date_aa ,
+			tdrn.min_connect_date_aa ,
+			tdrn.business_category_name ,
+			tbln.current_goal_uid,
+			row_number () over (partition by tdrn.lead_id ,
+			date(date_trunc('month',
+			tdrn.assigned_date))
+		order by
+			tdrn.assigned_date ) as rk
+		from
+			sales.tbl_db_reassignment_nimbus tdrn
+		left join sales.tbl_base_leads_nimbus tbln on
+			tdrn.lead_id = tbln.lead_id
+		where
+			date(tdrn.assigned_date) >= '2022-01-01'
+				and tdrn.reactivation_source_modified = 'Selected Platform Activities'
+				and lower(tdrn.business_unit) in (
+				select
+					*
+				from
+					sales.tbl_istsales_bu)
+				and lower(coalesce (tdrn.team, '')) not in (
+				select
+					*
+				from
+					sales.tbl_istsales_offline_team)
 		union
-		--fa leads
-		select tdrn.lead_id ,
-		tdrn.assigned_date ,
-		tdrn.min_call_timestamp ,
-		tdrn.min_connect_date ,
-		tdrn.business_category_name ,
-		tbln.current_goal_uid,
-		1 as rk
-		from sales.tbl_db_fa_nimbus tdrn  
-		left join sales.tbl_base_leads_nimbus tbln on tdrn.lead_id = tbln.lead_id
-		where date(tdrn.assigned_date) >= '2022-01-01' 
-		and lower(tdrn.business_unit) in (select * from sales.tbl_istsales_bu)
-		and lower(coalesce (tdrn.team,'')) not in (select * from sales.tbl_istsales_offline_team))
-	where rk = 1)
-	select date(date_trunc('month', tdfn.assigned_date))  as assigned_month,
-	current_goal_uid as topology_uid,
-	count(distinct tdfn.lead_id) as lead_assigned,
-	count(distinct case when date(assigned_date)+ interval '7 days' >= date(tdfn.min_call_date_aa) then tdfn.lead_id end) as lead_dial_d7,
-	count(distinct case when date(assigned_date)+ interval '30 days' >= date(tdfn.min_call_date_aa) then tdfn.lead_id end) as lead_dial_d30,
-	count(distinct case when date(assigned_date)+ interval '7 days' >= date(tdfn.min_connect_date_aa) then tdfn.lead_id end) as lead_contact_d7,
-	count(distinct case when date(assigned_date)+ interval '30 days' >= date(tdfn.min_connect_date_aa) then tdfn.lead_id end) as lead_contact_d30
-	from base tdfn 
-	where r = 1
-	group by 1,2
-	UNION ALL
-	SELECT 
-	     date(date_trunc('month', tdfn.assigned_date))  as assigned_month,
-	    'Overall' AS topology_uid,
-	    COUNT(DISTINCT lead_id) AS lead_assigned,
-	    COUNT(DISTINCT CASE WHEN assigned_date + INTERVAL '7 days' >= min_call_date_aa THEN lead_id END) AS lead_dial_d7,
-	    COUNT(DISTINCT CASE WHEN assigned_date + INTERVAL '30 days' >= min_call_date_aa THEN lead_id END) AS lead_dial_d30,
-	    COUNT(DISTINCT CASE WHEN assigned_date + INTERVAL '7 days' >= min_connect_date_aa THEN lead_id END) AS lead_contact_d7,
-	    COUNT(DISTINCT CASE WHEN assigned_date + INTERVAL '30 days' >= min_connect_date_aa THEN lead_id END) AS lead_contact_d30
-	FROM 
-	    base tdfn
-	WHERE 
-	    r = 1
-	group by 1,2
-) fa_ra on fa_ra.topology_uid = base.topology_uid and fa_ra.assigned_month = base.months
+			--fa leads
+			select
+				tdrn.lead_id ,
+				tdrn.assigned_date ,
+				tdrn.min_call_timestamp ,
+				tdrn.min_connect_date ,
+				tdrn.business_category_name ,
+				tbln.current_goal_uid,
+				1 as rk
+			from
+				sales.tbl_db_fa_nimbus tdrn
+			left join sales.tbl_base_leads_nimbus tbln on
+				tdrn.lead_id = tbln.lead_id
+			where
+				date(tdrn.assigned_date) >= '2022-01-01'
+					and lower(tdrn.business_unit) in (
+					select
+						*
+					from
+						sales.tbl_istsales_bu)
+					and lower(coalesce (tdrn.team, '')) not in (
+					select
+						*
+					from
+						sales.tbl_istsales_offline_team))
+	where
+		rk = 1)
+	select
+		date(date_trunc('month',
+		tdfn.assigned_date)) as assigned_month,
+		current_goal_uid as topology_uid,
+		count(distinct tdfn.lead_id) as lead_assigned,
+		count(distinct case when date(assigned_date)+ interval '7 days' >= date(tdfn.min_call_date_aa) then tdfn.lead_id end) as lead_dial_d7,
+		count(distinct case when date(assigned_date)+ interval '30 days' >= date(tdfn.min_call_date_aa) then tdfn.lead_id end) as lead_dial_d30,
+		count(distinct case when date(assigned_date)+ interval '7 days' >= date(tdfn.min_connect_date_aa) then tdfn.lead_id end) as lead_contact_d7,
+		count(distinct case when date(assigned_date)+ interval '30 days' >= date(tdfn.min_connect_date_aa) then tdfn.lead_id end) as lead_contact_d30
+	from
+		base tdfn
+	where
+		r = 1
+	group by
+		1,
+		2
+union all
+	select
+		date(date_trunc('month',
+		tdfn.assigned_date)) as assigned_month,
+		'Overall' as topology_uid,
+		COUNT(distinct lead_id) as lead_assigned,
+		COUNT(distinct case when assigned_date + interval '7 days' >= min_call_date_aa then lead_id end) as lead_dial_d7,
+		COUNT(distinct case when assigned_date + interval '30 days' >= min_call_date_aa then lead_id end) as lead_dial_d30,
+		COUNT(distinct case when assigned_date + interval '7 days' >= min_connect_date_aa then lead_id end) as lead_contact_d7,
+		COUNT(distinct case when assigned_date + interval '30 days' >= min_connect_date_aa then lead_id end) as lead_contact_d30
+	from
+		base tdfn
+	where
+		r = 1
+	group by
+		1,
+		2
+) fa_ra on
+	fa_ra.topology_uid = base.topology_uid
+	and fa_ra.assigned_month = base.months
 left join 
 (with junk as
-	(select distinct lead_id as junk_id
-	from sales.tbl_base_disposition_nimbus tbdn
-	where tbdn.lead_stage = 'Junk'),
-purchase as
-	(select 
-	date(date_trunc('month', trb.purchase_date)) as date, 
-	trb.learner_uid 
-	from truth.tbl_revenue_base trb 
-	where date(trb.purchase_date) >= '2022-01-01' and trb.lead_squared_attribution = 'Yes'
-	and trb.sub_type != 'Offline'
-	group by 1,2),
-interested as 
-	(select date(date_trunc('month', tbdn.disposition_date)) as disp_month,
-	lead_id as warm_leads
-	from sales.tbl_base_disposition_nimbus tbdn
-	where lower(tbdn.lead_stage) IN ('agreed to pay','hot','warm','interested')
-	and date_trunc('month', tbdn.disposition_date) >= '2022-01-01'
-	group by 1,2)
-select date(date_trunc('month',tbcn.call_timestamp)) as months,
-tbln.current_goal_uid as topology_uid,
-	count(distinct tbcn.leadid) as leads,
-	count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk,
-	count(distinct tsf.leadid) as sql_leads,
-	count(distinct case when junk_id is null then tsf.leadid end) as sql_exc_junk,
-	count(distinct p.learner_uid) as leads_paid,
-	count(distinct case when junk_id is null then p.learner_uid end) as paid_exc_junk,
-	count(distinct case when junk_id is null then i.warm_leads end) as interested_lead,
-	count(distinct case when junk_id is null and tsf.leadid is not null then i.warm_leads end) as interested_sql_lead,
-	count(distinct case when junk_id is null and i.warm_leads is not null then p.learner_uid end) as interested_paid_lead
-	from sales.tbl_base_calls_nimbus tbcn 
-	left join junk j on j.junk_id = tbcn.leadid
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid 
-	left join sandbox_analytics.tbl_sql_final tsf on tsf.leadid = tbcn.leadid and date(date_trunc('month', tsf.call_date ))= date(date_trunc('month',tbcn.call_timestamp))
-	left join purchase p on p.learner_uid = tbln.learner_unacademy_uid and p.date = date(date_trunc('month',tbcn.call_timestamp))
-	left join interested i on i.warm_leads = tbcn.leadid and i.disp_month = date(date_trunc('month',tbcn.call_timestamp))
-	where date(tbcn.call_timestamp) >= '2022-01-01' and tbcn.call_answer_status = 'answered'
-	and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	and lower(tbcn.business_unit) in 
-	(select * from sales.tbl_istsales_bu)
-group by 1,2
-union 
-select date(date_trunc('month',tbcn.call_timestamp)) as months,
-'Overall' as topology_uid,
-	count(distinct tbcn.leadid) as leads,
-	count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk,
-	count(distinct tsf.leadid) as sql_leads,
-	count(distinct case when junk_id is null then tsf.leadid end) as sql_exc_junk,
-	count(distinct p.learner_uid) as leads_paid,
-	count(distinct case when junk_id is null then p.learner_uid end) as paid_exc_junk,
-	count(distinct case when junk_id is null then i.warm_leads end) as interested_lead,
-	count(distinct case when junk_id is null and tsf.leadid is not null then i.warm_leads end) as interested_sql_lead,
-	count(distinct case when junk_id is null and i.warm_leads is not null then p.learner_uid end) as interested_paid_lead
-	from sales.tbl_base_calls_nimbus tbcn 
-	left join junk j on j.junk_id = tbcn.leadid
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid 
-	left join sandbox_analytics.tbl_sql_final tsf on tsf.leadid = tbcn.leadid and date(date_trunc('month', tsf.call_date ))= date(date_trunc('month',tbcn.call_timestamp))
-	left join purchase p on p.learner_uid = tbln.learner_unacademy_uid and p.date = date(date_trunc('month',tbcn.call_timestamp))
-	left join interested i on i.warm_leads = tbcn.leadid and i.disp_month = date(date_trunc('month',tbcn.call_timestamp))
-	where date(tbcn.call_timestamp) >= '2022-01-01' and tbcn.call_answer_status = 'answered'
-	and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	and lower(tbcn.business_unit) in 
-	(select * from sales.tbl_istsales_bu)
-group by 1,2
-) contact_sql on contact_sql.months = base.months and contact_sql.topology_uid = base.topology_uid
+	(
+	select
+		distinct lead_id as junk_id
+	from
+		sales.tbl_base_disposition_nimbus tbdn
+	where
+		tbdn.lead_stage = 'Junk'),
+	purchase as
+	(
+	select
+		date(date_trunc('month',
+		trb.purchase_date)) as date,
+		trb.learner_uid
+	from
+		truth.tbl_revenue_base trb
+	where
+		date(trb.purchase_date) >= '2022-01-01'
+			and trb.lead_squared_attribution = 'Yes'
+			and trb.sub_type != 'Offline'
+		group by
+			1,
+			2),
+	interested as 
+	(
+	select
+		date(date_trunc('month',
+		tbdn.disposition_date)) as disp_month,
+		lead_id as warm_leads
+	from
+		sales.tbl_base_disposition_nimbus tbdn
+	where
+		lower(tbdn.lead_stage) in ('agreed to pay', 'hot', 'warm', 'interested')
+			and date_trunc('month',
+			tbdn.disposition_date) >= '2022-01-01'
+		group by
+			1,
+			2)
+	select
+		date(date_trunc('month',
+		tbcn.call_timestamp)) as months,
+		tbln.current_goal_uid as topology_uid,
+		count(distinct tbcn.leadid) as leads,
+		count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk,
+		count(distinct tsf.leadid) as sql_leads,
+		count(distinct case when junk_id is null then tsf.leadid end) as sql_exc_junk,
+		count(distinct p.learner_uid) as leads_paid,
+		count(distinct case when junk_id is null then p.learner_uid end) as paid_exc_junk,
+		count(distinct case when junk_id is null then i.warm_leads end) as interested_lead,
+		count(distinct case when junk_id is null and tsf.leadid is not null then i.warm_leads end) as interested_sql_lead,
+		count(distinct case when junk_id is null and i.warm_leads is not null then p.learner_uid end) as interested_paid_lead
+	from
+		sales.tbl_base_calls_nimbus tbcn
+	left join junk j on
+		j.junk_id = tbcn.leadid
+	left join sales.tbl_base_leads_nimbus tbln on
+		tbln.lead_id = tbcn.leadid
+	left join sandbox_analytics.tbl_sql_final tsf on
+		tsf.leadid = tbcn.leadid
+		and date(date_trunc('month',
+		tsf.call_date ))= date(date_trunc('month',
+		tbcn.call_timestamp))
+	left join purchase p on
+		p.learner_uid = tbln.learner_unacademy_uid
+			and p.date = date(date_trunc('month',
+			tbcn.call_timestamp))
+		left join interested i on
+			i.warm_leads = tbcn.leadid
+				and i.disp_month = date(date_trunc('month',
+				tbcn.call_timestamp))
+			where
+				date(tbcn.call_timestamp) >= '2022-01-01'
+					and tbcn.call_answer_status = 'answered'
+					and lower(coalesce (tbcn.team, '')) not in (
+					select
+						*
+					from
+						sales.tbl_istsales_offline_team)
+					and lower(tbcn.business_unit) in 
+	(
+					select
+						*
+					from
+						sales.tbl_istsales_bu)
+				group by
+					1,
+					2
+			union
+				select
+					date(date_trunc('month',
+					tbcn.call_timestamp)) as months,
+					'Overall' as topology_uid,
+					count(distinct tbcn.leadid) as leads,
+					count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk,
+					count(distinct tsf.leadid) as sql_leads,
+					count(distinct case when junk_id is null then tsf.leadid end) as sql_exc_junk,
+					count(distinct p.learner_uid) as leads_paid,
+					count(distinct case when junk_id is null then p.learner_uid end) as paid_exc_junk,
+					count(distinct case when junk_id is null then i.warm_leads end) as interested_lead,
+					count(distinct case when junk_id is null and tsf.leadid is not null then i.warm_leads end) as interested_sql_lead,
+					count(distinct case when junk_id is null and i.warm_leads is not null then p.learner_uid end) as interested_paid_lead
+				from
+					sales.tbl_base_calls_nimbus tbcn
+				left join junk j on
+					j.junk_id = tbcn.leadid
+				left join sales.tbl_base_leads_nimbus tbln on
+					tbln.lead_id = tbcn.leadid
+				left join sandbox_analytics.tbl_sql_final tsf on
+					tsf.leadid = tbcn.leadid
+					and date(date_trunc('month',
+					tsf.call_date ))= date(date_trunc('month',
+					tbcn.call_timestamp))
+				left join purchase p on
+					p.learner_uid = tbln.learner_unacademy_uid
+						and p.date = date(date_trunc('month',
+						tbcn.call_timestamp))
+					left join interested i on
+						i.warm_leads = tbcn.leadid
+							and i.disp_month = date(date_trunc('month',
+							tbcn.call_timestamp))
+						where
+							date(tbcn.call_timestamp) >= '2022-01-01'
+								and tbcn.call_answer_status = 'answered'
+								and lower(coalesce (tbcn.team, '')) not in (
+								select
+									*
+								from
+									sales.tbl_istsales_offline_team)
+								and lower(tbcn.business_unit) in 
+	(
+								select
+									*
+								from
+									sales.tbl_istsales_bu)
+							group by
+								1,
+								2
+) contact_sql on
+	contact_sql.months = base.months
+	and contact_sql.topology_uid = base.topology_uid
 left join 
-(select date(date_trunc('month', tbdn.disposition_date)) as months,
-tbln.current_goal_uid as topology_uid ,
-count(distinct tbdn.lead_id) as warm_leads
-from sales.tbl_base_disposition_nimbus tbdn
-left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbdn.lead_id
-where lower(tbdn.lead_stage) IN ('agreed to pay','hot','warm','interested')
-and date_trunc('month', tbdn.disposition_date) >= '2022-01-01'
-group by 1,2
-union
-select date(date_trunc('month', tbdn.disposition_date)) as months,
-'Overall' as topology_uid ,
-count(distinct tbdn.lead_id) as warm_leads
-from sales.tbl_base_disposition_nimbus tbdn
-left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbdn.lead_id
-where lower(tbdn.lead_stage) IN ('agreed to pay','hot','warm','interested')
-and date_trunc('month', tbdn.disposition_date) >= '2022-01-01'
-group by 1,2) hot_warm on hot_warm.months = base.months and hot_warm.topology_uid = base.topology_uid
+(
+	select
+		date(date_trunc('month',
+		tbdn.disposition_date)) as months,
+		tbln.current_goal_uid as topology_uid ,
+		count(distinct tbdn.lead_id) as warm_leads
+	from
+		sales.tbl_base_disposition_nimbus tbdn
+	left join sales.tbl_base_leads_nimbus tbln on
+		tbln.lead_id = tbdn.lead_id
+	where
+		lower(tbdn.lead_stage) in ('agreed to pay', 'hot', 'warm', 'interested')
+			and date_trunc('month',
+			tbdn.disposition_date) >= '2022-01-01'
+		group by
+			1,
+			2
+	union
+		select
+			date(date_trunc('month',
+			tbdn.disposition_date)) as months,
+			'Overall' as topology_uid ,
+			count(distinct tbdn.lead_id) as warm_leads
+		from
+			sales.tbl_base_disposition_nimbus tbdn
+		left join sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbdn.lead_id
+		where
+			lower(tbdn.lead_stage) in ('agreed to pay', 'hot', 'warm', 'interested')
+				and date_trunc('month',
+				tbdn.disposition_date) >= '2022-01-01'
+			group by
+				1,
+				2) hot_warm on
+	hot_warm.months = base.months
+	and hot_warm.topology_uid = base.topology_uid
 left join 
 (with revenue as 
-(select 
-date(date_trunc('month', trb.purchase_date)) as date, 
-tt.uid as topology_uid ,
-sum(trb.amount) as revenue,
-count(distinct trb.payment_id) as payments
-from truth.tbl_revenue_base trb 
-left join topology_topology tt on tt.id = trb.topology_id
-where date(trb.purchase_date) >= '2022-01-01' and trb.lead_squared_attribution = 'Yes'
-and trb.sub_type != 'Offline'
-group by 1,2
-union
-select 
-date(date_trunc('month', trb.purchase_date)) as date, 
-'Overall' as topology_uid ,
-sum(trb.amount) as revenue,
-count(distinct trb.payment_id) as payments
-from truth.tbl_revenue_base trb 
-left join topology_topology tt on tt.id = trb.topology_id
-where date(trb.purchase_date) >= '2022-01-01' and trb.lead_squared_attribution = 'Yes'
-and trb.sub_type != 'Offline'
-group by 1,2
+(
+	select
+		date(date_trunc('month',
+		trb.purchase_date)) as date,
+		tt.uid as topology_uid ,
+		sum(trb.amount) as revenue,
+		count(distinct trb.payment_id) as payments
+	from
+		truth.tbl_revenue_base trb
+	left join topology_topology tt on
+		tt.id = trb.topology_id
+	where
+		date(trb.purchase_date) >= '2022-01-01'
+			and trb.lead_squared_attribution = 'Yes'
+			and trb.sub_type != 'Offline'
+		group by
+			1,
+			2
+	union
+		select
+			date(date_trunc('month',
+			trb.purchase_date)) as date,
+			'Overall' as topology_uid ,
+			sum(trb.amount) as revenue,
+			count(distinct trb.payment_id) as payments
+		from
+			truth.tbl_revenue_base trb
+		left join topology_topology tt on
+			tt.id = trb.topology_id
+		where
+			date(trb.purchase_date) >= '2022-01-01'
+				and trb.lead_squared_attribution = 'Yes'
+				and trb.sub_type != 'Offline'
+			group by
+				1,
+				2
 ),
-junk as
-	(select distinct lead_id as junk_id
-	from sales.tbl_base_disposition_nimbus tbdn
-	where tbdn.lead_stage = 'Junk'),
-contact as 
-(select date(date_trunc('month',tbcn.call_timestamp)) as date,
-tbln.current_goal_uid as topology_uid,
-	count(distinct tbcn.leadid) as leads_contacted,
-	count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk
-	from sales.tbl_base_calls_nimbus tbcn 
-	left join junk j on j.junk_id = tbcn.leadid
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid 
-	where date(tbcn.call_timestamp) >= '2022-01-01' and tbcn.call_answer_status = 'answered'
-	and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	and lower(tbcn.business_unit) in 
-	(select * from sales.tbl_istsales_bu)
-group by 1,2
+	junk as
+	(
+	select
+		distinct lead_id as junk_id
+	from
+		sales.tbl_base_disposition_nimbus tbdn
+	where
+		tbdn.lead_stage = 'Junk'),
+	contact as 
+(
+	select
+		date(date_trunc('month',
+		tbcn.call_timestamp)) as date,
+		tbln.current_goal_uid as topology_uid,
+		count(distinct tbcn.leadid) as leads_contacted,
+		count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk
+	from
+		sales.tbl_base_calls_nimbus tbcn
+	left join junk j on
+		j.junk_id = tbcn.leadid
+	left join sales.tbl_base_leads_nimbus tbln on
+		tbln.lead_id = tbcn.leadid
+	where
+		date(tbcn.call_timestamp) >= '2022-01-01'
+			and tbcn.call_answer_status = 'answered'
+			and lower(coalesce (tbcn.team, '')) not in (
+			select
+				*
+			from
+				sales.tbl_istsales_offline_team)
+			and lower(tbcn.business_unit) in 
+	(
+			select
+				*
+			from
+				sales.tbl_istsales_bu)
+		group by
+			1,
+			2
+	union
+		select
+			date(date_trunc('month',
+			tbcn.call_timestamp)) as date,
+			'Overall' as topology_uid,
+			count(distinct tbcn.leadid) as leads_contacted,
+			count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk
+		from
+			sales.tbl_base_calls_nimbus tbcn
+		left join junk j on
+			j.junk_id = tbcn.leadid
+		left join sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbcn.leadid
+		where
+			date(tbcn.call_timestamp) >= '2022-01-01'
+				and tbcn.call_answer_status = 'answered'
+				and lower(coalesce (tbcn.team, '')) not in (
+				select
+					*
+				from
+					sales.tbl_istsales_offline_team)
+				and lower(tbcn.business_unit) in 
+	(
+				select
+					*
+				from
+					sales.tbl_istsales_bu)
+			group by
+				1,
+				2),
+	bde_count as 
+(
+	select
+		call_month,
+		current_goal_uid as topology_uid,
+		count(distinct bde_email) as bde_count
+	from
+		(
+		select
+			date(date_trunc('month',
+			tbcn.call_timestamp )) as call_month,
+			tbln.current_goal_uid,
+			tbcn.bde_email ,
+			count(distinct tbcn.leadid) as leads_dial,
+			count(distinct date(tbcn.call_timestamp)) days,
+			sum(tbcn.call_duration) as tt
+		from
+			sales.tbl_base_calls_nimbus tbcn
+		left join sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbcn.leadid
+		where
+			date(tbcn.call_timestamp) >= '2022-01-01'
+				and lower(tbcn.business_unit) in (
+				select
+					*
+				from
+					sales.tbl_istsales_bu)
+				and lower(coalesce (tbcn.team, '')) not in (
+				select
+					*
+				from
+					sales.tbl_istsales_offline_team)
+			group by
+				1,
+				2,
+				3)
+	where
+		days >= 10
+		and tt >= 1000
+		and leads_dial >= 500
+	group by
+		1,
+		2
 union
-select date(date_trunc('month',tbcn.call_timestamp)) as date,
-'Overall' as topology_uid,
-	count(distinct tbcn.leadid) as leads_contacted,
-	count(distinct case when junk_id is null then tbcn.leadid end) as leads_exc_junk
-	from sales.tbl_base_calls_nimbus tbcn 
-	left join junk j on j.junk_id = tbcn.leadid
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid 
-	where date(tbcn.call_timestamp) >= '2022-01-01' and tbcn.call_answer_status = 'answered'
-	and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	and lower(tbcn.business_unit) in 
-	(select * from sales.tbl_istsales_bu)
-group by 1,2),
-bde_count as 
-(select call_month,
-current_goal_uid as topology_uid,
-count(distinct bde_email) as bde_count
-from 
-	(SELECT date(date_trunc('month', tbcn.call_timestamp )) as call_month,
-	tbln.current_goal_uid,
-	tbcn.bde_email ,
-	count(distinct tbcn.leadid) as leads_dial,
-	count(distinct date(tbcn.call_timestamp )) days,
-	sum(tbcn.call_duration) as tt
-	FROM sales.tbl_base_calls_nimbus tbcn 
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid
-	where date(tbcn.call_timestamp) >= '2022-01-01'
-	and lower(tbcn.business_unit) in (select * from sales.tbl_istsales_bu)
-		and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	group by 1,2,3)
-where days >= 10 and tt>= 1000 and leads_dial>= 500
-group by 1,2
-union
-select call_month,
-'Overall' as topology_uid,
-count(distinct bde_email) as bde_count
-from 
-	(SELECT date(date_trunc('month', tbcn.call_timestamp )) as call_month,
-	tbln.current_goal_uid,
-	tbcn.bde_email ,
-	count(distinct tbcn.leadid) as leads_dial,
-	count(distinct date(tbcn.call_timestamp )) days,
-	sum(tbcn.call_duration) as tt
-	FROM sales.tbl_base_calls_nimbus tbcn 
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid
-	where date(tbcn.call_timestamp) >= '2022-01-01'
-	and lower(tbcn.business_unit) in (select * from sales.tbl_istsales_bu)
-		and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	group by 1,2,3)
-where days >= 10 and tt>= 1000 and leads_dial>= 500
-group by 1,2)
-select coalesce (p.date, c.date) as months,
-coalesce (p.topology_uid,c.topology_uid)  as topology_uid,
-p.revenue,
-p.payments,
-c.leads_contacted,
-c.leads_exc_junk,
-b.bde_count
-from revenue p
-left join contact c on c.date = p.date and c.topology_uid = p.topology_uid
-left join bde_count b on c.date = b.call_month and c.topology_uid = b.topology_uid
-) arpu on arpu.months = base.months and arpu.topology_uid = base.topology_uid
+	select
+		call_month,
+		'Overall' as topology_uid,
+		count(distinct bde_email) as bde_count
+	from
+		(
+		select
+			date(date_trunc('month',
+			tbcn.call_timestamp )) as call_month,
+			tbln.current_goal_uid,
+			tbcn.bde_email ,
+			count(distinct tbcn.leadid) as leads_dial,
+			count(distinct date(tbcn.call_timestamp)) days,
+			sum(tbcn.call_duration) as tt
+		from
+			sales.tbl_base_calls_nimbus tbcn
+		left join sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbcn.leadid
+		where
+			date(tbcn.call_timestamp) >= '2022-01-01'
+				and lower(tbcn.business_unit) in (
+				select
+					*
+				from
+					sales.tbl_istsales_bu)
+				and lower(coalesce (tbcn.team, '')) not in (
+				select
+					*
+				from
+					sales.tbl_istsales_offline_team)
+			group by
+				1,
+				2,
+				3)
+	where
+		days >= 10
+		and tt >= 1000
+		and leads_dial >= 500
+	group by
+		1,
+		2)
+	select
+		coalesce (p.date,
+		c.date) as months,
+		coalesce (p.topology_uid,
+		c.topology_uid) as topology_uid,
+		p.revenue,
+		p.payments,
+		c.leads_contacted,
+		c.leads_exc_junk,
+		b.bde_count
+	from
+		revenue p
+	left join contact c on
+		c.date = p.date
+		and c.topology_uid = p.topology_uid
+	left join bde_count b on
+		c.date = b.call_month
+		and c.topology_uid = b.topology_uid
+) arpu on
+	arpu.months = base.months
+	and arpu.topology_uid = base.topology_uid
 left join 
-(select call_month as months,
-topology_uid,
-count(distinct bde_email) as num_bdes
-from 
-	(SELECT date(date_trunc('month', tbcn.call_timestamp )) as call_month,
-	tbln.current_goal_uid as topology_uid,
-	tbcn.bde_email ,
-	count(distinct tbcn.leadid) as leads_dial,
-	count(distinct date(tbcn.call_timestamp )) days,
-	sum(tbcn.call_duration) as tt
-	FROM sales.tbl_base_calls_nimbus tbcn 
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid
-	where date(tbcn.call_timestamp) >= '2022-01-01'
-	and lower(tbcn.business_unit) in (select * from sales.tbl_istsales_bu)
-		and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	group by 1,2,3)
-where days >= 10 and tt>= 1000 and leads_dial>= 500
-group by 1,2
-union 
-select call_month as months,
-topology_uid,
-count(distinct bde_email)
-from 
-	(SELECT date(date_trunc('month', tbcn.call_timestamp )) as call_month,
-	'Overall' as topology_uid,
-	tbcn.bde_email ,
-	count(distinct tbcn.leadid) as leads_dial,
-	count(distinct date(tbcn.call_timestamp )) days,
-	sum(tbcn.call_duration) as tt
-	FROM sales.tbl_base_calls_nimbus tbcn 
-	left join sales.tbl_base_leads_nimbus tbln on tbln.lead_id = tbcn.leadid
-	where date(tbcn.call_timestamp) >= '2022-01-01'
-	and lower(tbcn.business_unit) in (select * from sales.tbl_istsales_bu)
-		and lower(coalesce (tbcn.team,'')) not in (select * from sales.tbl_istsales_offline_team)
-	group by 1,2,3)
-where days >= 10 and tt>= 1000 and leads_dial>= 500
-group by 1,2) bde on bde.topology_uid = base.topology_uid and bde.months = base.months
+(
+	select
+		call_month as months,
+		topology_uid,
+		count(distinct bde_email) as num_bdes
+	from
+		(
+		select
+			date(date_trunc('month',
+			tbcn.call_timestamp )) as call_month,
+			tbln.current_goal_uid as topology_uid,
+			tbcn.bde_email ,
+			count(distinct tbcn.leadid) as leads_dial,
+			count(distinct date(tbcn.call_timestamp)) days,
+			sum(tbcn.call_duration) as tt
+		from
+			sales.tbl_base_calls_nimbus tbcn
+		left join sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbcn.leadid
+		where
+			date(tbcn.call_timestamp) >= '2022-01-01'
+				and lower(tbcn.business_unit) in (
+				select
+					*
+				from
+					sales.tbl_istsales_bu)
+				and lower(coalesce (tbcn.team, '')) not in (
+				select
+					*
+				from
+					sales.tbl_istsales_offline_team)
+			group by
+				1,
+				2,
+				3)
+	where
+		days >= 10
+		and tt >= 1000
+		and leads_dial >= 500
+	group by
+		1,
+		2
+union
+	select
+		call_month as months,
+		topology_uid,
+		count(distinct bde_email)
+	from
+		(
+		select
+			date(date_trunc('month',
+			tbcn.call_timestamp )) as call_month,
+			'Overall' as topology_uid,
+			tbcn.bde_email ,
+			count(distinct tbcn.leadid) as leads_dial,
+			count(distinct date(tbcn.call_timestamp)) days,
+			sum(tbcn.call_duration) as tt
+		from
+			sales.tbl_base_calls_nimbus tbcn
+		left join sales.tbl_base_leads_nimbus tbln on
+			tbln.lead_id = tbcn.leadid
+		where
+			date(tbcn.call_timestamp) >= '2022-01-01'
+				and lower(tbcn.business_unit) in (
+				select
+					*
+				from
+					sales.tbl_istsales_bu)
+				and lower(coalesce (tbcn.team, '')) not in (
+				select
+					*
+				from
+					sales.tbl_istsales_offline_team)
+			group by
+				1,
+				2,
+				3)
+	where
+		days >= 10
+		and tt >= 1000
+		and leads_dial >= 500
+	group by
+		1,
+		2) bde on
+	bde.topology_uid = base.topology_uid
+	and bde.months = base.months
+;
